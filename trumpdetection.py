@@ -6,16 +6,23 @@ import webbrowser
 import time
 import random
 from twitterauthentication import appAPIKey, appAPIKeySecret
+import sys
 
-#LOGGING
-start = time.time()
+#DEBUG MODE?
+gettrace = getattr(sys,'gettrace',None) #Checking to see if we're in debug mode. This is mainly for my purposes cause I can't seem to debug when I'm in a nested folder inside a virtual environment.
+if gettrace() is None: #Regular (non-debug) mode
+    trump_csv = "mid20to2021_trump_tweets.csv"  #Reference to file where trump tweets are stored
+elif gettrace():    #In Debug Mode (This next line is specific to the way I've set up my directories)
+    trump_csv = "TrumpTwitterDoppelgangerDetector\\mid20to2021_trump_tweets.csv" #Reference to file where trump tweets are stored (nested)
+else:
+    print("How'd we end up here?")
+    print(1/0)
 
 #Authentication Details
 consumer_key = appAPIKey    #Get from Twitter
 consumer_secret = appAPIKeySecret   #Get from Twitter
 callback_uri = 'oob'    #Unsure about how to implement but apparently if you're not doing this on some website, you can use 'oob' to handle it
 
-trump_csv = "mid20to2021_trump_tweets.csv"  #Reference to file where trump tweets are stored
 max_tweets = 30 #Number of tweets from user-provided account to analyse. Given that the trump tweet dataset has 1984 values, each extra tweet means that the string similarity algorithm runs 1984 times more.
 
 def authentication(consumer_key, consumer_secret, callback_uri):
@@ -89,12 +96,17 @@ def user_similarity_verdict(username, scores, percentage_confidence):
 
 api = authentication(consumer_key, consumer_secret, callback_uri)
 username = input("Enter the username you suspect of being Donald Trump (public profiles only): @")
+
+start = time.time() #LOGGING - Implemented here so that 
+
 user_corpus = user_data_parsing(api, username, max_tweets)
 trump_corpus = trump_data_parsing(trump_csv)
 similarity_scores = data_comparison(user_corpus, trump_corpus)
 df = user_similarity_verdict(username, similarity_scores, percentage_confidence=50)
 
-# Below code is for sanity checking. It shows that this algorithm is not ideal for this application. 
+end_of_main = time.time()
+
+# # Below code is for sanity checking. It shows that this algorithm is not ideal for this application. 
 # print(f"You most similar tweet was:\n{username}: {df['UserText'][0]}\nDonald Trump: {df['TrumpText'][0]}")
 
 #plots
@@ -102,6 +114,7 @@ plt.hist(df['ratio'])
 plt.title(f"How similar are Donald Trump and {username}'s tweets?", fontsize=12)
 plt.xlabel("Percentage Similarity (%)", fontsize=10)
 plt.ylabel("Similar Tweet Pairs", fontsize = 10)
+end_of_plotting = time.time()
 plt.show()
 
-print(f"\nThis operation took {time.time()-start:.0f} seconds")
+print(f"\nThe main operation took {end_of_main-start:.0f} seconds")
