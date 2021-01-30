@@ -1,8 +1,10 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 from fuzzywuzzy import fuzz
 import tweepy
 import webbrowser
 import time
+import random
 from twitterauthentication import appAPIKey, appAPIKeySecret
 
 #LOGGING
@@ -36,14 +38,18 @@ def authentication(consumer_key, consumer_secret, callback_uri):
 def user_data_parsing(api, username, max_tweets):
     print("Hmm... seems suspicious. Let me check it out!")
     user_corpus = []
-    for tweet in tweepy.Cursor(api.user_timeline,id=username).items(max_tweets):
-        user_corpus.append(tweet.text.split("https")[0])
+    try:
+        for tweet in tweepy.Cursor(api.user_timeline,id=username).items(max_tweets):
+            user_corpus.append(tweet.text.split("https")[0])
+    except:
+        print(f"The '{username}' account is either private or invalid. Please check.")
+        exit(1)
     return user_corpus
 
 def trump_data_parsing(csvfile):
     print("Hmm highly odd...")
     trump_fulltweetdata = pd.read_csv(csvfile)
-    trump_corpus = trump_fulltweetdata['text'].str.split("https", expand=True)
+    trump_corpus = trump_fulltweetdata['text'].str.split("http", expand=True)
     trump_corpus = trump_corpus[0]
     return trump_corpus
 
@@ -59,7 +65,7 @@ def data_comparison(user_corpus, trump_corpus):
                 }
             )
             if len(list_of_scores)%10000 == 0:
-                print("Processing...")
+                print(random.choice(["Processing...","COVFEFE","CHINA!","Mexico will pay for the wall!","Fake News!"]))
     return list_of_scores
 
 def user_similarity_verdict(username, scores, percentage_confidence):
@@ -79,13 +85,23 @@ def user_similarity_verdict(username, scores, percentage_confidence):
         print("This person may be Donald Trump! Keep an eye on them :|")
     else:
         print("This person is probably not the Donald... for now...")
-    return None
+    return ldf
 
 api = authentication(consumer_key, consumer_secret, callback_uri)
 username = input("Enter the username you suspect of being Donald Trump (public profiles only): @")
 user_corpus = user_data_parsing(api, username, max_tweets)
 trump_corpus = trump_data_parsing(trump_csv)
 similarity_scores = data_comparison(user_corpus, trump_corpus)
-user_similarity_verdict(username, similarity_scores, percentage_confidence=70)
+df = user_similarity_verdict(username, similarity_scores, percentage_confidence=50)
+
+# Below code is for sanity checking. It shows that this algorithm is not ideal for this application. 
+# print(f"You most similar tweet was:\n{username}: {df['UserText'][0]}\nDonald Trump: {df['TrumpText'][0]}")
+
+#plots
+plt.hist(df['ratio'])
+plt.title(f"How similar are Donald Trump and {username}'s tweets?", fontsize=12)
+plt.xlabel("Percentage Similarity (%)", fontsize=10)
+plt.ylabel("Similar Tweet Pairs", fontsize = 10)
+plt.show()
 
 print(f"\nThis operation took {time.time()-start:.0f} seconds")
